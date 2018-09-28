@@ -37,5 +37,9 @@
       <Link>182316__il112__backspin_32bits.wav</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="..\Me_&amp;_U_%28Cup_&amp;_String_2_Step_Mix%29___Free_Download__.mp3">
+      <Link>Me_&amp;_U_%28Cup_&amp;_String_2_Step_Mix%29___Free_Download__.mp3</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

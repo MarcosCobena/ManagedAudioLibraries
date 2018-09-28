@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using MP3Sharp;
 using NAudio.Wave;
@@ -14,6 +15,8 @@ namespace OpenALDemo
         static readonly TimeSpan _delay = TimeSpan.FromSeconds(1);
 
         const string AudioFilesPathFormat = "bin/Debug/netcoreapp2.1/{0}";
+        const int BuffersCount = 2;
+        const int BufferSize = 1 * 1024 * 1024;
 
         // Based on: https://gist.github.com/kamiyaowl/32fb397e0141c65792e1
         static void Main(string[] args)
@@ -23,6 +26,10 @@ namespace OpenALDemo
             Thread.Sleep(_delay);
 
             PlayMP3("425556__planetronik__rock-808-beat.mp3"); // OK
+
+            Thread.Sleep(_delay);
+
+            PlayMP3("Me_&_U_(Cup_&_String_2_Step_Mix)___Free_Download__.mp3");
 
             Thread.Sleep(_delay);
 
@@ -51,89 +58,126 @@ namespace OpenALDemo
             device = IntPtr.Zero;
         }
 
-        static void Initialize(out IntPtr device, out ContextHandle context, out uint buffer, out int source)
+        static int[] Initialize(out IntPtr device, out ContextHandle context, out int source)
         {
             device = Alc.OpenDevice(null);
             context = Alc.CreateContext(device, (int[])null);
             Alc.MakeContextCurrent(context);
 
-            AL.GenBuffer(out buffer);
+            var buffers = AL.GenBuffers(BuffersCount);
             AL.GenSources(1, out source);
+
+            return buffers;
         }
 
-        static void Play<TBuffer>(
-            uint buffer, int source, int sampleRate, TBuffer[] readBuffer, ALFormat format = ALFormat.StereoFloat32Ext) 
-            where TBuffer : struct
+        static void PlayAndDispose(Stream reader, int[] buffers, int source, int sampleRate, 
+                                   ALFormat format = ALFormat.StereoFloat32Ext)
         {
-            AL.BufferData((int)buffer, format, readBuffer, readBuffer.Length, sampleRate);
-            AL.Source(source, ALSourcei.Buffer, (int)buffer);
-
+            var totalBytesRead = ReadBuffersAndEnqueueThem(reader, buffers, source, sampleRate, format);
             AL.SourcePlay(source);
-            Trace.Write("Playing...");
 
-            SleepThreadWhilePlaying(source);
+            Trace.WriteLine("Playing...");
+
+            ALSourceState sourceState;
+
+            do
+            {
+                Thread.Sleep(20);
+
+                AL.GetSource(source, ALGetSourcei.BuffersProcessed, out int buffersProcessed);
+
+                if (buffersProcessed > 0 && reader.Position < reader.Length)
+                {
+                    var unqueuedBuffers = AL.SourceUnqueueBuffers(source, buffersProcessed);
+
+                    Trace.WriteLine(
+                        $"- Unqueued {unqueuedBuffers.Length} buffers for {reader.Length - reader.Position} B left");
+
+                    totalBytesRead += ReadBuffersAndEnqueueThem(reader, unqueuedBuffers, source, sampleRate, format);
+                }
+
+                sourceState = AL.GetSourceState(source);
+            }
+            while (sourceState == ALSourceState.Playing);
+
+            Trace.WriteLine($"Stop ({totalBytesRead} B read)");
+
+            reader.Dispose();
+            reader = null;
+        }
+
+        static int ReadBuffersAndEnqueueThem(Stream reader, int[] buffers, int source, int sampleRate, ALFormat format)
+        {
+            var bytesRead = 0;
+            var totalBytesRead = 0;
+            var readBuffer = new byte[BufferSize];
+            var currentBufferIndex = 0;
+
+            while ((bytesRead = reader.Read(readBuffer, 0, readBuffer.Length)) > 0 && 
+                   currentBufferIndex < buffers.Length)
+            {
+                var currentBuffer = buffers[currentBufferIndex];
+
+                AL.BufferData(currentBuffer, format, readBuffer, bytesRead, sampleRate);
+                AL.SourceQueueBuffer(source, currentBuffer);
+
+                Trace.WriteLine(
+                    $"+ Queued buffer {currentBuffer} with {bytesRead} B, stream position at {reader.Position}");
+
+                currentBufferIndex++;
+                totalBytesRead += bytesRead;
+            }
+
+            Trace.WriteLine($"~ Queued a total of {totalBytesRead} B");
+
+            return totalBytesRead;
         }
 
         static void PlayOGG(string filename)
         {
-            Initialize(out IntPtr device, out ContextHandle context, out uint buffer, out int source);
+            var buffers = Initialize(out IntPtr device, out ContextHandle context, out int source);
 
-            using (var vorbis = new VorbisReader(string.Format(AudioFilesPathFormat, filename)))
+            var vorbis = new VorbisReader(string.Format(AudioFilesPathFormat, filename));
+            var stream = new MemoryStream();
+            var samples = new float[vorbis.Channels * vorbis.SampleRate];
+            var samplesRead = 0;
+
+            while ((samplesRead = vorbis.ReadSamples(samples, 0, samples.Length)) > 0)
             {
-                var samples = new float[vorbis.Channels * vorbis.SampleRate];
-                vorbis.ReadSamples(samples, 0, samples.Length);
-                var readBuffer = new byte[samples.Length * 4];
+                var readBuffer = new byte[samplesRead * 4];
                 Buffer.BlockCopy(samples, 0, readBuffer, 0, readBuffer.Length);
 
-                Play(buffer, source, vorbis.SampleRate, readBuffer);
+                stream.Write(readBuffer, 0, readBuffer.Length);
             }
+
+            stream.Position = 0;
+
+            PlayAndDispose(stream, buffers, source, vorbis.SampleRate);
+
+            vorbis.Dispose();
+            vorbis = null;
 
             Dispose(ref device, ref context);
         }
 
         static void PlayMP3(string filename)
         {
-            Initialize(out IntPtr device, out ContextHandle context, out uint buffer, out int source);
+            var buffers = Initialize(out IntPtr device, out ContextHandle context, out int source);
 
-            using (var reader = new MP3Stream(string.Format(AudioFilesPathFormat, filename)))
-            {
-                var readBuffer = new byte[reader.Length];
-                reader.Read(readBuffer, 0, readBuffer.Length);
-
-                Play(buffer, source, reader.Frequency, readBuffer, ALFormat.Stereo16);
-            }
+            var reader = new MP3Stream(string.Format(AudioFilesPathFormat, filename));
+            PlayAndDispose(reader, buffers, source, reader.Frequency, ALFormat.Stereo16);
 
             Dispose(ref device, ref context);
         }
 
         static void PlayWav(string filename)
         {
-            Initialize(out IntPtr device, out ContextHandle context, out uint buffer, out int source);
+            var buffers = Initialize(out IntPtr device, out ContextHandle context, out int source);
 
-            using (var reader = new WaveFileReader(string.Format(AudioFilesPathFormat, filename)))
-            {
-                var readBuffer = new byte[reader.Length];
-                reader.Read(readBuffer, 0, (int)reader.Length);
-
-                Play(buffer, source, reader.WaveFormat.SampleRate, readBuffer);
-            }
+            var reader = new WaveFileReader(string.Format(AudioFilesPathFormat, filename));
+            PlayAndDispose(reader, buffers, source, reader.WaveFormat.SampleRate);
 
             Dispose(ref device, ref context);
-        }
-
-        static void SleepThreadWhilePlaying(int source)
-        {
-            ALSourceState sourceState;
-
-            do
-            {
-                Thread.Sleep(10);
-                sourceState = AL.GetSourceState(source);
-                Trace.Write(".");
-            }
-            while (sourceState == ALSourceState.Playing);
-
-            Trace.Write(Environment.NewLine);
         }
     }
 }
