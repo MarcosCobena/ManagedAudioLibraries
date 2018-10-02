@@ -113,8 +113,8 @@ namespace OpenALDemo
             var readBuffer = new byte[BufferSize];
             var currentBufferIndex = 0;
 
-            while ((bytesRead = reader.Read(readBuffer, 0, readBuffer.Length)) > 0 && 
-                   currentBufferIndex < buffers.Length)
+            while (currentBufferIndex < buffers.Length &&
+                   (bytesRead = reader.Read(readBuffer, 0, readBuffer.Length)) > 0)
             {
                 var currentBuffer = buffers[currentBufferIndex];
 
