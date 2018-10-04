@@ -9,10 +9,10 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' " />
   <ItemGroup>
     <Reference Include="OpenTK">
-      <HintPath>..\..\..\..\..\Library\Frameworks\Xamarin.Mac.framework\Versions\4.6.0.14\lib\x86_64\full\OpenTK.dll</HintPath>
+      <HintPath>..\..\..\..\..\Library\Frameworks\Xamarin.Mac.framework\Versions\Current\lib\x86_64\full\OpenTK.dll</HintPath>
     </Reference>
     <Reference Include="Xamarin.Mac">
-      <HintPath>..\..\..\..\..\Library\Frameworks\Xamarin.Mac.framework\Versions\4.6.0.14\lib\x86_64\full\Xamarin.Mac.dll</HintPath>
+      <HintPath>..\..\..\..\..\Library\Frameworks\Xamarin.Mac.framework\Versions\Current\lib\x86_64\full\Xamarin.Mac.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
