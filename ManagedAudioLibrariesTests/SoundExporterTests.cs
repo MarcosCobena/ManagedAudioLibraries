@@ -19,19 +19,10 @@ namespace ManagedAudioLibrariesTests
             AudioFiles.WavSR44100BR8CF1Filename,
             AudioFiles.WavSR44100BR8CF2Filename
         };
-        static readonly TimeSpan _expectedTotalTime;
         static readonly TimeSpan _totalTimeDelta = TimeSpan.FromMilliseconds(10);
 
         const string DefaultOutputPath = "Bar.wav";
         const string OutputPathFormat = "{0}.wav";
-
-        static SoundExporterTests()
-        {
-            using (var reader = new AudioFileReader(AudioFiles.WavFilename))
-            {
-                _expectedTotalTime = reader.TotalTime;
-            }
-        }
 
         public static TheoryData<string, SampleRate, BitRate, ChannelFormat> ConversionTestData
         {
@@ -57,7 +48,8 @@ namespace ManagedAudioLibrariesTests
 
         [Theory]
         [MemberData(nameof(ConversionTestData))]
-        public void ConvertTest(string inputPath, SampleRate sampleRate, BitRate bitRate, ChannelFormat channelFormat)
+        public void ConversionTest(
+            string inputPath, SampleRate sampleRate, BitRate bitRate, ChannelFormat channelFormat)
         {
             var inputFileName = Path.GetFileNameWithoutExtension(inputPath);
             var actualSampleRate = SampleRateHelper.GetSampleRate(sampleRate);
@@ -69,13 +61,15 @@ namespace ManagedAudioLibrariesTests
 
             Assert.True(isSuccess);
 
-            using (var reader = new WaveFileReader(outputPath))
+            using (var inputReader = new AudioFileReader(inputPath))
+            using (var outputReader = new WaveFileReader(outputPath))
             {
-                Assert.Equal(actualSampleRate, reader.WaveFormat.SampleRate);
-                Assert.Equal(actualBitRate, reader.WaveFormat.BitsPerSample);
-                Assert.Equal(actualChannelsCount, reader.WaveFormat.Channels);
+                Assert.Equal(actualSampleRate, outputReader.WaveFormat.SampleRate);
+                Assert.Equal(actualBitRate, outputReader.WaveFormat.BitsPerSample);
+                Assert.Equal(actualChannelsCount, outputReader.WaveFormat.Channels);
                 Assert.InRange(
-                    _expectedTotalTime, reader.TotalTime - _totalTimeDelta, reader.TotalTime + _totalTimeDelta);
+                    inputReader.TotalTime, outputReader.TotalTime - _totalTimeDelta, 
+                    outputReader.TotalTime + _totalTimeDelta);
             }
 
 #if !DEBUG
@@ -98,6 +92,18 @@ namespace ManagedAudioLibrariesTests
 
             Assert.False(isSuccess);
             Assert.False(existsOutputPath);
+        }
+
+        [Fact]
+        public void BitRate24ConversionTest()
+        {
+            ConversionTest(AudioFiles.WavSR44100BR24CF2Filename, SampleRate.Low, BitRate.Low, ChannelFormat.Mono);
+        }
+
+        [Fact]
+        public void LargeFileConversionTest()
+        {
+            ConversionTest(AudioFiles.LargeWavSR44100BR16CF2Filename, SampleRate.Low, BitRate.Low, ChannelFormat.Mono);
         }
 
         public void Dispose()

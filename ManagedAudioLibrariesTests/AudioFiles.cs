@@ -23,5 +23,9 @@
         public static string WavSR44100BR8CF1Filename => "SR44100-BR8-CF1.wav";
 
         public static string WavSR44100BR8CF2Filename => "SR44100-BR8-CF2.wav";
+
+        public static string WavSR44100BR24CF2Filename => "SR44100-BR24-CF2.wav";
+
+        public static string LargeWavSR44100BR16CF2Filename => "LargeWavSR44100BR16CF2.wav";
     }
 }
