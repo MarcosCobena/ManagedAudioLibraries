@@ -101,9 +101,29 @@ namespace ManagedAudioLibrariesTests
         }
 
         [Fact]
+        public void BitRate64ConversionTest()
+        {
+            ConversionTest(AudioFiles.WavSR44100BR64CF2Filename, SampleRate.Low, BitRate.Low, ChannelFormat.Mono);
+        }
+
+        [Fact]
         public void LargeFileConversionTest()
         {
             ConversionTest(AudioFiles.LargeWavSR44100BR16CF2Filename, SampleRate.Low, BitRate.Low, ChannelFormat.Mono);
+        }
+
+        [Fact]
+        public void ALauConversionTest()
+        {
+            Assert.Throws<InvalidDataException>(
+                () => WavConverter.TryConvert(AudioFiles.WavSR44100BR32CF2ALauFilename, DefaultOutputPath));
+        }
+
+        [Fact]
+        public void ULauConversionTest()
+        {
+            Assert.Throws<InvalidDataException>(
+                () => WavConverter.TryConvert(AudioFiles.WavSR44100BR32CF2ULauFilename, DefaultOutputPath));
         }
 
         public void Dispose()

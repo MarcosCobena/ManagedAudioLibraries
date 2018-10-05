@@ -71,6 +71,18 @@
       <Link>LargeWavSR44100BR16CF2.wav</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="..\SR44100-BR32-CF2-ALaw.wav">
+      <Link>SR44100-BR32-CF2-ALaw.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR44100-BR32-CF2-ULaw.wav">
+      <Link>SR44100-BR32-CF2-ULaw.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR44100-BR64-CF2.wav">
+      <Link>SR44100-BR64-CF2.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SoundExporter\SoundExporter.csproj" />

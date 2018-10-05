@@ -9,6 +9,19 @@ namespace SoundExporter
     {
         const string InvalidPathMessage = "Path cannot be null or white spaces";
 
+        /// <summary>
+        /// Tries to convert <paramref name="inputPath"/> with passed params, saving it at 
+        /// <paramref name="outputPath"/>.
+        /// 
+        /// Supported input formats: 8, 16, 32 and 64 bits PCM
+        /// Unsupported ones: A-Lau and U-Lau PCM
+        /// </summary>
+        /// <returns><c>true</c>, if conversion was successful, <c>false</c> otherwise.</returns>
+        /// <param name="inputPath">Input path.</param>
+        /// <param name="outputPath">Output path.</param>
+        /// <param name="sampleRate">Sample rate.</param>
+        /// <param name="channelFormat">Channel format.</param>
+        /// <param name="bitRate">Bit rate.</param>
         public static bool TryConvert(
             string inputPath, string outputPath,
             SampleRate? sampleRate = null, ChannelFormat? channelFormat = null, BitRate? bitRate = null)
@@ -21,6 +34,28 @@ namespace SoundExporter
             if (string.IsNullOrWhiteSpace(outputPath))
             {
                 throw new ArgumentException(InvalidPathMessage, nameof(outputPath));
+            }
+
+            var isNeededNativeDependency = false;
+            Exception innerException = null;
+
+            // TODO find any other way not involving AudioFileReader because flow can differ on Windows, for instance.
+            // Maybe reading the header "by hand"?
+            try
+            {
+                var useless = new AudioFileReader(inputPath);
+            }
+            catch (DllNotFoundException exception)
+            {
+                isNeededNativeDependency = true;
+                innerException = exception;
+            }
+
+            if (isNeededNativeDependency)
+            {
+                throw new InvalidDataException(
+                    "Input file format is not supported. Please, convert it previously to any supported one.", 
+                    innerException);
             }
 
             if (!sampleRate.HasValue && !channelFormat.HasValue && !bitRate.HasValue)
