@@ -31,6 +31,38 @@
       <Link>425556__planetronik__rock-808-beat.mp3</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="..\SR22050-BR8-CF1.wav">
+      <Link>SR22050-BR8-CF1.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR22050-BR8-CF2.wav">
+      <Link>SR22050-BR8-CF2.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR22050-BR16-CF1.wav">
+      <Link>SR22050-BR16-CF1.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR22050-BR16-CF2.wav">
+      <Link>SR22050-BR16-CF2.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR44100-BR8-CF1.wav">
+      <Link>SR44100-BR8-CF1.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR44100-BR8-CF2.wav">
+      <Link>SR44100-BR8-CF2.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR44100-BR16-CF1.wav">
+      <Link>SR44100-BR16-CF1.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\SR44100-BR16-CF2.wav">
+      <Link>SR44100-BR16-CF2.wav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SoundExporter\SoundExporter.csproj" />

@@ -99,6 +99,7 @@ namespace SoundExporter
                         else
                         {
                             // Do nothing, already mono
+                            File.Copy(inputPath, intermediateChannelFormatPath, true);
                         }
                     }
                     else // stereo
