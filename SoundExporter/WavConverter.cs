@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
@@ -6,10 +7,27 @@ namespace SoundExporter
 {
     public static class WavConverter
     {
+        const string InvalidPathMessage = "Path cannot be null or white spaces";
+
         public static bool TryConvert(
-            string inputPath, string outputPath, 
+            string inputPath, string outputPath,
             SampleRate? sampleRate = null, ChannelFormat? channelFormat = null, BitRate? bitRate = null)
         {
+            if (string.IsNullOrWhiteSpace(inputPath))
+            {
+                throw new ArgumentException(InvalidPathMessage, nameof(inputPath));
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                throw new ArgumentException(InvalidPathMessage, nameof(outputPath));
+            }
+
+            if (!sampleRate.HasValue && !channelFormat.HasValue && !bitRate.HasValue)
+            {
+                return false;
+            }
+
             var outputFileName = Path.GetFileNameWithoutExtension(outputPath);
             var isAlreadyConverterToBitRateHigh = false;
 
@@ -37,8 +55,25 @@ namespace SoundExporter
                 isEverythingOK = false;
             }
 
+#if !DEBUG
+            DeleteIntermediateFiles(intermediateSampleRatePath, intermediateChannelFormatPath, intermediateBitRatePath);
+#endif
+
             return isEverythingOK;
         }
+
+#if !DEBUG
+        static void DeleteIntermediateFiles(params string[] paths)
+        {
+            foreach (var path in paths)
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+        }
+#endif
 
         static bool TryConvert(
             string inputPath, out string intermediateChannelFormatPath, ChannelFormat? channelFormat, 
