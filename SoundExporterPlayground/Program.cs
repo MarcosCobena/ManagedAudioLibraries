@@ -18,10 +18,10 @@ namespace SoundExporterPlayground
             {
                 var fileName = Path.GetFileNameWithoutExtension(file);
                 var outputFileName = $"{fileName}-out.wav";
-                var outputPath = Path.Join(currentDirectory, outputFileName);
+                var outputPath = Path.Combine(currentDirectory, "Output", outputFileName);
                 var thread = new Thread(() =>
                 {
-                    Debug.WriteLine($"{fileName} - Converting...");
+                    Debug.WriteLine($"Converting {fileName}...");
 
                     try
                     {
@@ -29,15 +29,15 @@ namespace SoundExporterPlayground
                     }
                     catch (InvalidDataException)
                     {
-                        Debug.WriteLine($"{fileName} - Ops, unsupported format");
+                        Debug.WriteLine($":-S Ops, unsupported format: {fileName}");
                     }
                     catch (Exception exception)
                     {
-                        Debug.WriteLine($"{fileName} - Ops, {exception.Message}");
+                        Debug.WriteLine($":,-( Ops, {exception.Message}: {fileName}");
                     }
                     finally
                     {
-                        Debug.WriteLine($"{fileName} - Done!");
+                        Debug.WriteLine($"Done!: {fileName}");
                     }
                 });
                 thread.Start();
