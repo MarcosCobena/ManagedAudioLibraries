@@ -57,9 +57,7 @@ namespace ManagedAudioLibrariesTests
             var actualChannelsCount = ChannelFormatHelper.GetChannelsCount(channelFormat);
             var fileName = $"{inputFileName}-SR{actualSampleRate}-BR{actualBitRate}-CF{actualChannelsCount}";
             var outputPath = string.Format(OutputPathFormat, fileName);
-            var isSuccess = WavConverter.TryConvert(inputPath, outputPath, sampleRate, channelFormat, bitRate);
-
-            Assert.True(isSuccess);
+            WavConverter.Convert(inputPath, outputPath, sampleRate, channelFormat, bitRate);
 
             using (var inputReader = new AudioFileReader(inputPath))
             using (var outputReader = new WaveFileReader(outputPath))
@@ -81,16 +79,15 @@ namespace ManagedAudioLibrariesTests
         public void UnexistingInputTest()
         {
             Assert.Throws<FileNotFoundException>(
-                () => WavConverter.TryConvert("Foo.wav", DefaultOutputPath, SampleRate.Low));
+                () => WavConverter.Convert("Foo.wav", DefaultOutputPath, SampleRate.Low));
         }
 
         [Fact]
         public void Conversionless()
         {
-            var isSuccess = WavConverter.TryConvert(AudioFiles.WavFilename, DefaultOutputPath);
+            WavConverter.Convert(AudioFiles.WavFilename, DefaultOutputPath);
             var existsOutputPath = File.Exists(DefaultOutputPath);
 
-            Assert.False(isSuccess);
             Assert.False(existsOutputPath);
         }
 
@@ -116,14 +113,14 @@ namespace ManagedAudioLibrariesTests
         public void ALauConversionTest()
         {
             Assert.Throws<InvalidDataException>(
-                () => WavConverter.TryConvert(AudioFiles.WavSR44100BR32CF2ALauFilename, DefaultOutputPath));
+                () => WavConverter.Convert(AudioFiles.WavSR44100BR32CF2ALauFilename, DefaultOutputPath));
         }
 
         [Fact]
         public void ULauConversionTest()
         {
             Assert.Throws<InvalidDataException>(
-                () => WavConverter.TryConvert(AudioFiles.WavSR44100BR32CF2ULauFilename, DefaultOutputPath));
+                () => WavConverter.Convert(AudioFiles.WavSR44100BR32CF2ULauFilename, DefaultOutputPath));
         }
 
         public void Dispose()
