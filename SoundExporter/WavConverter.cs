@@ -11,10 +11,10 @@ namespace SoundExporter
 
         /// <summary>
         /// Tries to convert <paramref name="inputPath"/> with passed params, saving it at 
-        /// <paramref name="outputPath"/>.
+        /// <paramref name="outputPath"/>. This method is thread-safe.
         /// 
         /// Supported input formats: 8, 16, 32 and 64 bits PCM
-        /// Unsupported ones: A-Lau and U-Lau PCM
+        /// Unsupported ones: A-Lau and Mu-Lau PCM
         /// </summary>
         /// <returns><c>true</c>, if conversion was successful, <c>false</c> otherwise.</returns>
         /// <param name="inputPath">Input path.</param>
@@ -36,14 +36,21 @@ namespace SoundExporter
                 throw new ArgumentException(InvalidPathMessage, nameof(outputPath));
             }
 
+            var isFormatUnsupported = false;
             var isNeededNativeDependency = false;
             Exception innerException = null;
 
-            // TODO find any other way not involving AudioFileReader because flow can differ on Windows, for instance.
-            // Maybe reading the header "by hand"?
             try
             {
-                var useless = new AudioFileReader(inputPath);
+                using (var reader = new WaveFileReader(inputPath))
+                {
+                    var format = reader.WaveFormat;
+
+                    if (format.Encoding == WaveFormatEncoding.ALaw || format.Encoding == WaveFormatEncoding.MuLaw)
+                    {
+                        isFormatUnsupported = true;
+                    }
+                }
             }
             catch (DllNotFoundException exception)
             {
@@ -51,7 +58,7 @@ namespace SoundExporter
                 innerException = exception;
             }
 
-            if (isNeededNativeDependency)
+            if (isFormatUnsupported || isNeededNativeDependency)
             {
                 throw new InvalidDataException(
                     "Input file format is not supported. Please, convert it previously to any supported one.", 
@@ -193,7 +200,7 @@ namespace SoundExporter
                         WaveFileWriter.CreateWaveFile16(intermediateBitRatePath, resampler);
 
                         using (var pcm16Stream = File.OpenRead(intermediateBitRatePath))
-                        using (var memoryStream = ConvertPCM16ToPCM8(pcm16Stream))
+                        using (var memoryStream = PCMConverter.ConvertPCM16ToPCM8(pcm16Stream))
                         {
                             var actualBitRate = BitRateHelper.GetBitRate(BitRate.Low);
                             var waveFormat = new WaveFormat(
@@ -237,30 +244,6 @@ namespace SoundExporter
             }
 
             return true;
-        }
-
-        static unsafe MemoryStream ConvertPCM16ToPCM8(Stream reader)
-        {
-            var length = (int)(reader.Length - reader.Position);
-            var outputStream = new MemoryStream(length / sizeof(short));
-            var buffer = new byte[sizeof(short)];
-
-            fixed (byte* bufferRef = &buffer[0])
-            {
-                var sampleCount = length / sizeof(short);
-                var sample = (short*)bufferRef;
-
-                for (int i = 0; i < sampleCount; i++)
-                {
-                    reader.Read(buffer, 0, buffer.Length);
-                    var value = (byte)((*sample + short.MaxValue) >> 8);
-                    outputStream.WriteByte(value);
-                }
-            }
-
-            outputStream.Seek(0, SeekOrigin.Begin);
-
-            return outputStream;
         }
     }
 }
