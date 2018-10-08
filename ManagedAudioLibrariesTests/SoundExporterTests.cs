@@ -123,6 +123,14 @@ namespace ManagedAudioLibrariesTests
                 () => WavConverter.Convert(AudioFiles.WavSR44100BR32CF2ULauFilename, DefaultOutputPath));
         }
 
+        [Fact]
+        public void DifferentOutputDirectoryTest()
+        {
+            var outputPath = Path.Combine("Output", DefaultOutputPath);
+
+            WavConverter.Convert(AudioFiles.WavFilename, outputPath, SampleRate.Low, ChannelFormat.Mono, BitRate.Low);
+        }
+
         public void Dispose()
         {
 #if !DEBUG

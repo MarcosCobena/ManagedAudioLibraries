@@ -42,20 +42,28 @@ namespace SoundExporter
                 return;
             }
 
+            var outputDirectory = Path.GetDirectoryName(outputPath);
+
+            if (!Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+            }
+
             var outputFileName = Path.GetFileNameWithoutExtension(outputPath);
             var isAlreadyConvertedToBitRateHigh = false;
 
             Convert(
-                inputPath, out string intermediateSampleRatePath, sampleRate, outputFileName,
+                inputPath, out string intermediateSampleRatePath, sampleRate, outputDirectory, outputFileName,
                 ref isAlreadyConvertedToBitRateHigh);
 
             Convert(
-                intermediateSampleRatePath, out string intermediateChannelFormatPath, channelFormat, outputFileName);
+                intermediateSampleRatePath, out string intermediateChannelFormatPath, channelFormat, 
+                outputDirectory, outputFileName);
 
             // Bit rate conversion must be the last one as any other will turn output back to 16
             Convert(
-                intermediateChannelFormatPath, out string intermediateBitRatePath, bitRate, outputFileName,
-                isAlreadyConvertedToBitRateHigh);
+                intermediateChannelFormatPath, out string intermediateBitRatePath, bitRate, 
+                outputDirectory, outputFileName, isAlreadyConvertedToBitRateHigh);
 
             File.Copy(intermediateBitRatePath, outputPath, true);
 
@@ -111,7 +119,7 @@ namespace SoundExporter
 
         static void Convert(
             string inputPath, out string intermediateChannelFormatPath, ChannelFormat? channelFormat, 
-            string outputFileName)
+            string outputDirectory, string outputFileName)
         {
             if (!channelFormat.HasValue)
             {
@@ -121,7 +129,8 @@ namespace SoundExporter
 
             using (var reader = new AudioFileReader(inputPath))
             {
-                intermediateChannelFormatPath = $"{outputFileName}-intermediate-channelformat.wav";
+                var intermediateChannelFormatFileName = $"{outputFileName}-intermediate-channelformat.wav";
+                intermediateChannelFormatPath = Path.Combine(outputDirectory, intermediateChannelFormatFileName);
 
                 if (reader.WaveFormat.Channels == 2 && channelFormat.Value == ChannelFormat.Mono)
                 {
@@ -150,8 +159,8 @@ namespace SoundExporter
         }
 
         private static void Convert(
-            string inputPath, out string intermediateBitRatePath, BitRate? bitRate, string outputFileName, 
-            bool isAlreadyConvertedToBitRateHigh)
+            string inputPath, out string intermediateBitRatePath, BitRate? bitRate, 
+            string outputDirectory, string outputFileName, bool isAlreadyConvertedToBitRateHigh)
         {
             if (!bitRate.HasValue)
             {
@@ -169,7 +178,8 @@ namespace SoundExporter
                     return;
                 }
 
-                intermediateBitRatePath = $"{outputFileName}-intermediate-bitrate.wav";
+                var intermediateBitRateFileName = $"{outputFileName}-intermediate-bitrate.wav";
+                intermediateBitRatePath = Path.Combine(outputDirectory, intermediateBitRateFileName);
                 var originalFormat = reader.WaveFormat;
 
                 if (bitRate.Value == BitRate.High)
@@ -205,8 +215,8 @@ namespace SoundExporter
         }
 
         static void Convert(
-            string inputPath, out string intermediateSampleRatePath, SampleRate? sampleRate, string outputFileName, 
-            ref bool isAlreadyConvertedToBitRateHigh)
+            string inputPath, out string intermediateSampleRatePath, SampleRate? sampleRate, 
+            string outputDirectory, string outputFileName, ref bool isAlreadyConvertedToBitRateHigh)
         {
             if (!sampleRate.HasValue)
             {
@@ -220,7 +230,8 @@ namespace SoundExporter
             {
                 if (reader.WaveFormat.SampleRate != actualSampleRate)
                 {
-                    intermediateSampleRatePath = $"{outputFileName}-intermediate-samplerate.wav";
+                    var intermediateSampleRateFileName = $"{outputFileName}-intermediate-samplerate.wav";
+                    intermediateSampleRatePath = Path.Combine(outputDirectory, intermediateSampleRateFileName);
                     var resampler = new WdlResamplingSampleProvider(reader, actualSampleRate);
                     WaveFileWriter.CreateWaveFile16(intermediateSampleRatePath, resampler);
                     isAlreadyConvertedToBitRateHigh = true;
