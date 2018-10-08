@@ -44,7 +44,7 @@ namespace SoundExporter
 
             var outputDirectory = Path.GetDirectoryName(outputPath);
 
-            if (!Directory.Exists(outputDirectory))
+            if (!string.IsNullOrWhiteSpace(outputDirectory) && !Directory.Exists(outputDirectory))
             {
                 Directory.CreateDirectory(outputDirectory);
             }
