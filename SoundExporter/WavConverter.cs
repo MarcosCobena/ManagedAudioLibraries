@@ -36,6 +36,49 @@ namespace SoundExporter
                 throw new ArgumentException(InvalidPathMessage, nameof(outputPath));
             }
 
+            CheckSupportedFormat(inputPath);
+
+            if (!sampleRate.HasValue && !channelFormat.HasValue && !bitRate.HasValue)
+            {
+                return false;
+            }
+
+            var outputFileName = Path.GetFileNameWithoutExtension(outputPath);
+            var isAlreadyConvertedToBitRateHigh = false;
+
+            var isSampleRateSuccess = TryConvert(
+                inputPath, out string intermediateSampleRatePath, sampleRate, outputFileName,
+                ref isAlreadyConvertedToBitRateHigh);
+
+            var isChannelFormatSuccess = TryConvert(
+                intermediateSampleRatePath, out string intermediateChannelFormatPath, channelFormat, outputFileName);
+
+            // Bit rate conversion must be the last one as any other will turn output back to 16
+            var isBitRateSuccess = TryConvert(
+                intermediateChannelFormatPath, out string intermediateBitRatePath, bitRate, outputFileName,
+                isAlreadyConvertedToBitRateHigh);
+
+            bool isEverythingOK;
+
+            if (isSampleRateSuccess && isChannelFormatSuccess && isBitRateSuccess)
+            {
+                File.Copy(intermediateBitRatePath, outputPath, true);
+                isEverythingOK = true;
+            }
+            else
+            {
+                isEverythingOK = false;
+            }
+
+#if !DEBUG
+            DeleteIntermediateFiles(intermediateSampleRatePath, intermediateChannelFormatPath, intermediateBitRatePath);
+#endif
+
+            return isEverythingOK;
+        }
+
+        static void CheckSupportedFormat(string inputPath)
+        {
             var isFormatUnsupported = false;
             var isNeededNativeDependency = false;
             Exception innerException = null;
@@ -61,47 +104,9 @@ namespace SoundExporter
             if (isFormatUnsupported || isNeededNativeDependency)
             {
                 throw new InvalidDataException(
-                    "Input file format is not supported. Please, convert it previously to any supported one.", 
+                    "Input file format is not supported. Please, convert it previously to any supported one.",
                     innerException);
             }
-
-            if (!sampleRate.HasValue && !channelFormat.HasValue && !bitRate.HasValue)
-            {
-                return false;
-            }
-
-            var outputFileName = Path.GetFileNameWithoutExtension(outputPath);
-            var isAlreadyConverterToBitRateHigh = false;
-
-            var isSampleRateSuccess = TryConvert(
-                inputPath, out string intermediateSampleRatePath, sampleRate, outputFileName,
-                ref isAlreadyConverterToBitRateHigh);
-
-            var isChannelFormatSuccess = TryConvert(
-                intermediateSampleRatePath, out string intermediateChannelFormatPath, channelFormat, outputFileName);
-
-            // Bit rate conversion must be the last one as any other will turn output back to 16
-            var isBitRateSuccess = TryConvert(
-                intermediateChannelFormatPath, out string intermediateBitRatePath, bitRate, outputFileName,
-                isAlreadyConverterToBitRateHigh);
-
-            bool isEverythingOK;
-
-            if (isSampleRateSuccess && isChannelFormatSuccess && isBitRateSuccess)
-            {
-                File.Copy(intermediateBitRatePath, outputPath, true);
-                isEverythingOK = true;
-            }
-            else
-            {
-                isEverythingOK = false;
-            }
-
-#if !DEBUG
-            DeleteIntermediateFiles(intermediateSampleRatePath, intermediateChannelFormatPath, intermediateBitRatePath);
-#endif
-
-            return isEverythingOK;
         }
 
 #if !DEBUG
@@ -121,51 +126,39 @@ namespace SoundExporter
             string inputPath, out string intermediateChannelFormatPath, ChannelFormat? channelFormat, 
             string outputFileName)
         {
-            if (channelFormat.HasValue)
-            {
-                using (var reader = new AudioFileReader(inputPath))
-                {
-                    intermediateChannelFormatPath = $"{outputFileName}-intermediate-channelformat.wav";
-
-                    if (channelFormat.Value == ChannelFormat.Mono)
-                    {
-                        if (reader.WaveFormat.Channels == 2)
-                        {
-                            var resampler = new StereoToMonoSampleProvider(reader)
-                            {
-                                LeftVolume = 0,
-                                RightVolume = 1
-                            };
-                            WaveFileWriter.CreateWaveFile16(intermediateChannelFormatPath, resampler);
-                        }
-                        else
-                        {
-                            // Do nothing, already mono
-                            File.Copy(inputPath, intermediateChannelFormatPath, true);
-                        }
-                    }
-                    else // stereo
-                    {
-                        if (reader.WaveFormat.Channels == 1)
-                        {
-                            var resampler = new MonoToStereoSampleProvider(reader)
-                            {
-                                LeftVolume = 0.5f,
-                                RightVolume = 0.5f
-                            };
-                            WaveFileWriter.CreateWaveFile16(intermediateChannelFormatPath, resampler);
-                        }
-                        else
-                        {
-                            // Do nothing, already stereo
-                            File.Copy(inputPath, intermediateChannelFormatPath, true);
-                        }
-                    }
-                }
-            }
-            else
+            if (!channelFormat.HasValue)
             {
                 intermediateChannelFormatPath = inputPath;
+                return true;
+            }
+
+            using (var reader = new AudioFileReader(inputPath))
+            {
+                intermediateChannelFormatPath = $"{outputFileName}-intermediate-channelformat.wav";
+
+                if (reader.WaveFormat.Channels == 2 && channelFormat.Value == ChannelFormat.Mono)
+                {
+                    var resampler = new StereoToMonoSampleProvider(reader)
+                    {
+                        LeftVolume = 0,
+                        RightVolume = 1
+                    };
+                    WaveFileWriter.CreateWaveFile16(intermediateChannelFormatPath, resampler);
+                }
+                else if (reader.WaveFormat.Channels == 1 && channelFormat.Value == ChannelFormat.Stereo)
+                {
+                    var resampler = new MonoToStereoSampleProvider(reader)
+                    {
+                        LeftVolume = 0.5f,
+                        RightVolume = 0.5f
+                    };
+                    WaveFileWriter.CreateWaveFile16(intermediateChannelFormatPath, resampler);
+                }
+                else
+                {
+                    // Do nothing, already same channel format
+                    File.Copy(inputPath, intermediateChannelFormatPath, true);
+                }
             }
 
             return true;
@@ -173,50 +166,56 @@ namespace SoundExporter
 
         private static bool TryConvert(
             string inputPath, out string intermediateBitRatePath, BitRate? bitRate, string outputFileName, 
-            bool isAlreadyConverterToBitRateHigh)
+            bool isAlreadyConvertedToBitRateHigh)
         {
-            if (bitRate.HasValue)
+            if (!bitRate.HasValue)
             {
-                using (var reader = new AudioFileReader(inputPath))
-                {
-                    intermediateBitRatePath = $"{outputFileName}-intermediate-bitrate.wav";
-                    var originalFormat = reader.WaveFormat;
+                intermediateBitRatePath = inputPath;
+                return true;
+            }
 
-                    if (bitRate.Value == BitRate.High)
-                    {
-                        if (!isAlreadyConverterToBitRateHigh)
-                        {
-                            var resampler = new WdlResamplingSampleProvider(reader, originalFormat.SampleRate);
-                            WaveFileWriter.CreateWaveFile16(intermediateBitRatePath, resampler);
-                        }
-                        else
-                        {
-                            intermediateBitRatePath = inputPath;
-                        }
-                    }
-                    else // low
+            using (var reader = new AudioFileReader(inputPath))
+            {
+                var actualBitRate = BitRateHelper.GetBitRate(BitRate.Low);
+
+                if (reader.WaveFormat.BitsPerSample == actualBitRate)
+                {
+                    intermediateBitRatePath = inputPath;
+                    return true;
+                }
+
+                intermediateBitRatePath = $"{outputFileName}-intermediate-bitrate.wav";
+                var originalFormat = reader.WaveFormat;
+
+                if (bitRate.Value == BitRate.High)
+                {
+                    if (!isAlreadyConvertedToBitRateHigh)
                     {
                         var resampler = new WdlResamplingSampleProvider(reader, originalFormat.SampleRate);
                         WaveFileWriter.CreateWaveFile16(intermediateBitRatePath, resampler);
+                    }
+                    else
+                    {
+                        intermediateBitRatePath = inputPath;
+                    }
+                }
+                else // low
+                {
+                    var resampler = new WdlResamplingSampleProvider(reader, originalFormat.SampleRate);
+                    WaveFileWriter.CreateWaveFile16(intermediateBitRatePath, resampler);
 
-                        using (var pcm16Stream = File.OpenRead(intermediateBitRatePath))
-                        using (var memoryStream = PCMConverter.ConvertPCM16ToPCM8(pcm16Stream))
+                    using (var pcm16Stream = File.OpenRead(intermediateBitRatePath))
+                    using (var memoryStream = PCMConverter.ConvertPCM16ToPCM8(pcm16Stream))
+                    {
+                        var waveFormat = new WaveFormat(
+                            originalFormat.SampleRate, actualBitRate, originalFormat.Channels);
+
+                        using (var wavStream = new RawSourceWaveStream(memoryStream, waveFormat))
                         {
-                            var actualBitRate = BitRateHelper.GetBitRate(BitRate.Low);
-                            var waveFormat = new WaveFormat(
-                                originalFormat.SampleRate, actualBitRate, originalFormat.Channels);
-
-                            using (var wavStream = new RawSourceWaveStream(memoryStream, waveFormat))
-                            {
-                                WaveFileWriter.CreateWaveFile(intermediateBitRatePath, wavStream);
-                            }
+                            WaveFileWriter.CreateWaveFile(intermediateBitRatePath, wavStream);
                         }
                     }
                 }
-            }
-            else
-            {
-                intermediateBitRatePath = inputPath;
             }
 
             return true;
@@ -224,23 +223,29 @@ namespace SoundExporter
 
         static bool TryConvert(
             string inputPath, out string intermediateSampleRatePath, SampleRate? sampleRate, string outputFileName, 
-            ref bool isAlreadyConverterToBitRateHigh)
+            ref bool isAlreadyConvertedToBitRateHigh)
         {
-            if (sampleRate.HasValue)
+            if (!sampleRate.HasValue)
             {
-                int actualSampleRate = SampleRateHelper.GetSampleRate(sampleRate.Value);
+                intermediateSampleRatePath = inputPath;
+                return true;
+            }
 
-                using (var reader = new AudioFileReader(inputPath))
+            var actualSampleRate = SampleRateHelper.GetSampleRate(sampleRate.Value);
+
+            using (var reader = new AudioFileReader(inputPath))
+            {
+                if (reader.WaveFormat.SampleRate != actualSampleRate)
                 {
                     intermediateSampleRatePath = $"{outputFileName}-intermediate-samplerate.wav";
                     var resampler = new WdlResamplingSampleProvider(reader, actualSampleRate);
                     WaveFileWriter.CreateWaveFile16(intermediateSampleRatePath, resampler);
-                    isAlreadyConverterToBitRateHigh = true;
+                    isAlreadyConvertedToBitRateHigh = true;
                 }
-            }
-            else
-            {
-                intermediateSampleRatePath = inputPath;
+                else
+                {
+                    intermediateSampleRatePath = inputPath;
+                }
             }
 
             return true;
