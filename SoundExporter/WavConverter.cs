@@ -209,19 +209,7 @@ namespace SoundExporter
                 else // low
                 {
                     var resampler = new WdlResamplingSampleProvider(reader, originalFormat.SampleRate);
-                    WaveFileWriter.CreateWaveFile16(intermediateBitRatePath, resampler);
-
-                    using (var pcm16Stream = File.OpenRead(intermediateBitRatePath))
-                    using (var memoryStream = PCMConverter.ConvertPCM16ToPCM8(pcm16Stream))
-                    {
-                        var waveFormat = new WaveFormat(
-                            originalFormat.SampleRate, actualBitRate, originalFormat.Channels);
-
-                        using (var wavStream = new RawSourceWaveStream(memoryStream, waveFormat))
-                        {
-                            WaveFileWriter.CreateWaveFile(intermediateBitRatePath, wavStream);
-                        }
-                    }
+                    WaveFileWriter.CreateWaveFile(intermediateBitRatePath, new WaveFloatTo8Provider(resampler));
                 }
             }
         }
