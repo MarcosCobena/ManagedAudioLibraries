@@ -1,5 +1,8 @@
 ﻿using System;
 using System.IO;
+#if !DEBUG
+using System.Linq;
+#endif
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
@@ -25,16 +28,7 @@ namespace SoundExporter
             string inputPath, string outputPath,
             SampleRate? sampleRate = null, ChannelFormat? channelFormat = null, BitRate? bitRate = null)
         {
-            if (string.IsNullOrWhiteSpace(inputPath))
-            {
-                throw new ArgumentException(InvalidPathMessage, nameof(inputPath));
-            }
-
-            if (string.IsNullOrWhiteSpace(outputPath))
-            {
-                throw new ArgumentException(InvalidPathMessage, nameof(outputPath));
-            }
-
+            Check(inputPath, outputPath);
             CheckSupportedFormat(inputPath);
 
             if (!sampleRate.HasValue && !channelFormat.HasValue && !bitRate.HasValue)
@@ -68,8 +62,22 @@ namespace SoundExporter
             File.Copy(intermediateBitRatePath, outputPath, true);
 
 #if !DEBUG
-            DeleteIntermediateFiles(intermediateSampleRatePath, intermediateChannelFormatPath, intermediateBitRatePath);
+            DeleteIntermediateFiles(
+                inputPath, intermediateSampleRatePath, intermediateChannelFormatPath, intermediateBitRatePath);
 #endif
+        }
+
+        static void Check(string inputPath, string outputPath)
+        {
+            if (string.IsNullOrWhiteSpace(inputPath))
+            {
+                throw new ArgumentException(InvalidPathMessage, nameof(inputPath));
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                throw new ArgumentException(InvalidPathMessage, nameof(outputPath));
+            }
         }
 
         static void CheckSupportedFormat(string inputPath)
@@ -105,9 +113,13 @@ namespace SoundExporter
         }
 
 #if !DEBUG
-        static void DeleteIntermediateFiles(params string[] paths)
+        static void DeleteIntermediateFiles(string inputPath, params string[] paths)
         {
-            foreach (var path in paths)
+            // It may be any from paths is inputPath because there wasn't conversion needed
+            var intermediatePaths = paths.Where(
+                path => !path.Equals(inputPath, StringComparison.InvariantCultureIgnoreCase));
+
+            foreach (var path in intermediatePaths)
             {
                 if (File.Exists(path))
                 {

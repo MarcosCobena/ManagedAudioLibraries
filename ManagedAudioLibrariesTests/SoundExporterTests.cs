@@ -21,6 +21,7 @@ namespace ManagedAudioLibrariesTests
         };
         static readonly TimeSpan _totalTimeDelta = TimeSpan.FromMilliseconds(10);
 
+        const string DefaultOutputDirectory = "Output";
         const string DefaultOutputPath = "Bar.wav";
         const string OutputPathFormat = "{0}.wav";
 
@@ -126,9 +127,14 @@ namespace ManagedAudioLibrariesTests
         [Fact]
         public void DifferentOutputDirectoryTest()
         {
-            var outputPath = Path.Combine("Output", DefaultOutputPath);
+            var outputPath = Path.Combine(DefaultOutputDirectory, DefaultOutputPath);
 
             WavConverter.Convert(AudioFiles.WavFilename, outputPath, SampleRate.Low, ChannelFormat.Mono, BitRate.Low);
+
+#if !DEBUG
+            DeleteIfExists(outputPath);
+            Directory.Delete(DefaultOutputDirectory);
+#endif
         }
 
         public void Dispose()
