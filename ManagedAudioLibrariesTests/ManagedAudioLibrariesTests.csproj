@@ -67,8 +67,8 @@
       <Link>SR44100-BR24-CF2.wav</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\LargeWavSR44100BR16CF2.wav">
-      <Link>LargeWavSR44100BR16CF2.wav</Link>
+    <None Include="..\SR44100-BR16-CF2-Large.wav">
+      <Link>SR44100-BR16-CF2-Large.wav</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="..\SR44100-BR32-CF2-ALaw.wav">
